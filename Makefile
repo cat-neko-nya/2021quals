@@ -238,7 +238,7 @@ kataru:
 # alp
 .PHONY: alp
 alp:
-	alp ltsv --file=$(NGX_LOG) -m /api/condition/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12},/api/isu/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12},/api/isu/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/icon,/api/isu/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/graph,/api/isu/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/condition --dump /tmp/dump.log --pos /tmp/alp.pos
+	alp ltsv --file=$(NGX_LOG) -m /api/condition/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12},/api/isu/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/icon,/api/isu/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/graph,/api/isu/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/condition,/api/isu/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12} --dump /tmp/dump.log --pos /tmp/alp.pos
 	alp json --load /tmp/dump.log --sort=avg -r -o count,method,uri,avg  | head -n 20 | ${DISCORDCODE}
 	alp json --load /tmp/dump.log --sort=count -r -o count,method,uri,avg  | head -n 20 | ${DISCORDCODE}
 	alp json --load /tmp/dump.log --sort=sum -r -o count,method,uri,sum  | head -n 20 | ${DISCORDCODE}
