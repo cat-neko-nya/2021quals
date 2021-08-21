@@ -1156,7 +1156,6 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 	conditionsResponse := []*GetIsuConditionResponse{}
 	for _, c := range conditions {
 		cLevel, err := calculateConditionLevelStrFromConditionLevelValue(c.ConditionLevel)
-		fmt.Println(c)
 		if err != nil {
 			continue
 		}
