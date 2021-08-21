@@ -71,15 +71,15 @@ build:
 # 各種リスタート
 
 .PHONY: restart
-restart: restart-web restart-api
+restart: restart-web
 
 .PHONY: restart-web
 restart:
 	sudo systemctl restart $(SERVICE_NAME).service
 
-.PHONY: restart-api
-restart-api:
-	sudo systemctl restart $(API_SERVICE_NAME).service
+# .PHONY: restart-api
+# restart-api:
+# 	sudo systemctl restart $(API_SERVICE_NAME).service
 
 .PHONY: restart-nginx
 restart-nginx:
