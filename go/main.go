@@ -345,6 +345,27 @@ func postInitialize(c echo.Context) error {
 	// 	return c.NoContent(http.StatusInternalServerError)
 	// }
 
+	// 画像書き出し
+	var idList []string
+	err = db.Get(&idList, "SELECT jia_isu_uuid FROM `isu`")
+	for _, id := range idList {
+		var image []byte
+		err = db.Get(&image, "SELECT `image` FROM `isu` WHERE `jia_isu_uuid` = ?", id)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return c.String(http.StatusNotFound, "not found: isu")
+			}
+
+			c.Logger().Errorf("db error: %v", err)
+			return c.NoContent(http.StatusInternalServerError)
+		}
+
+		err = ioutil.WriteFile("../../images/"+id, image, 0755)
+		if err != nil {
+			return c.NoContent(http.StatusInternalServerError)
+		}
+	}
+
 	return c.JSON(http.StatusOK, InitializeResponse{
 		Language: "go",
 	})
@@ -582,12 +603,10 @@ func postIsu(c echo.Context) error {
 			return c.NoContent(http.StatusInternalServerError)
 		}
 
-		target_file, err := os.Create("../../images/" + jiaIsuUUID)
+		err = ioutil.WriteFile("../../images/"+jiaIsuUUID, image, 0755)
 		if err != nil {
 			return c.NoContent(http.StatusInternalServerError)
 		}
-		defer target_file.Close()
-		target_file.Write(image)
 	}
 
 	tx, err := db.Beginx()
