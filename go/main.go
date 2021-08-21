@@ -1171,20 +1171,22 @@ func getTrend(c echo.Context) error {
 }
 
 func calculateTrendRes(c echo.Context) ([]TrendResponse, error) {
-	characterList := []Isu{}
-	err := db.Select(&characterList, "SELECT `character` FROM `isu` GROUP BY `character`")
-	if err != nil {
-		c.Logger().Errorf("db error: %v", err)
-		return nil, c.NoContent(http.StatusInternalServerError)
-	}
+	// characterList := []Isu{}
+	// err := db.Select(&characterList, "SELECT `character` FROM `isu` GROUP BY `character`")
+	// if err != nil {
+	// 	c.Logger().Errorf("db error: %v", err)
+	// 	return nil, c.NoContent(http.StatusInternalServerError)
+	// }
+
+	characterList := []string{"いじっぱり", "うっかりや", "おくびょう", "おだやか", "おっとり", "おとなしい", "がんばりや", "きまぐれ ", "さみしがり", "しんちょう", "すなお", "ずぶとい", "せっかち", "てれや", "なまいき", "のうてんき", "のんき", "ひかえめ", "まじめ", "むじゃき", "やんちゃ", "ゆうかん", "ようき", "れいせい", "わんぱく"}
 
 	res := []TrendResponse{}
 
 	for _, character := range characterList {
 		isuList := []Isu{}
-		err = db.Select(&isuList,
+		err := db.Select(&isuList,
 			"SELECT * FROM `isu` WHERE `character` = ?",
-			character.Character,
+			character,
 		)
 		if err != nil {
 			c.Logger().Errorf("db error: %v", err)
@@ -1197,7 +1199,7 @@ func calculateTrendRes(c echo.Context) ([]TrendResponse, error) {
 		for _, isu := range isuList {
 			conditions := []IsuCondition{}
 			err = db.Select(&conditions,
-				"SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = ? ORDER BY timestamp DESC",
+				"SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = ? ORDER BY timestamp DESC LIMIT 1", // 最新一件で良いはず
 				isu.JIAIsuUUID,
 			)
 			if err != nil {
@@ -1239,7 +1241,7 @@ func calculateTrendRes(c echo.Context) ([]TrendResponse, error) {
 		})
 		res = append(res,
 			TrendResponse{
-				Character: character.Character,
+				Character: character,
 				Info:      characterInfoIsuConditions,
 				Warning:   characterWarningIsuConditions,
 				Critical:  characterCriticalIsuConditions,
