@@ -25,8 +25,6 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
 	"golang.org/x/sync/singleflight"
-
-	_ "net/http/pprof"
 )
 
 const (
@@ -227,10 +225,6 @@ func main() {
 	e := echo.New()
 	e.Debug = true
 	e.Logger.SetLevel(log.DEBUG)
-
-	go func() {
-		http.ListenAndServe("localhost:6060", nil)
-	}()
 
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
