@@ -357,6 +357,36 @@ func postInitialize(c echo.Context) error {
 	// 	return c.NoContent(http.StatusInternalServerError)
 	// }
 
+	var condition IsuCondition
+
+	rows, err := db.Queryx("SELECT * FROM `isu_condition`")
+	if err != nil {
+		c.Logger().Errorf("db init error: %v", err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	for rows.Next() {
+		err = rows.StructScan(&condition)
+		if err != nil {
+			c.Logger().Errorf("db init error: %v", err)
+			return c.NoContent(http.StatusInternalServerError)
+		}
+		condLevel, err := calculateConditionLevelValueFromConditionStr(condition.Condition)
+		if err != nil {
+			c.Logger().Errorf("db init error: %v", err)
+			return c.NoContent(http.StatusInternalServerError)
+		}
+		_, err = db.Exec(
+			"UPDATE `isu_condition` SET `condition_level` = ? WHERE `jia_isu_uuid` = ?",
+			condLevel,
+			condition.JIAIsuUUID,
+		)
+		if err != nil {
+			c.Logger().Errorf("db init error: %v", err)
+			return c.NoContent(http.StatusInternalServerError)
+		}
+	}
+
 	return c.JSON(http.StatusOK, InitializeResponse{
 		Language: "go",
 	})
