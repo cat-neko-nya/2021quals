@@ -24,6 +24,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
+	"golang.org/x/sync/singleflight"
 
 	_ "net/http/pprof"
 )
@@ -42,6 +43,8 @@ const (
 	scoreConditionLevelInfo     = 3
 	scoreConditionLevelWarning  = 2
 	scoreConditionLevelCritical = 1
+	/** getTrend, getIsuList, getIsuGraph, getIsuConditions は1秒までキャッシュしてよい */
+	allowedCacheTime = time.Second
 )
 
 var (
@@ -54,6 +57,14 @@ var (
 	postIsuConditionTargetBaseURL string // JIAへのactivate時に登録する，ISUがconditionを送る先のURL
 
 	jiaServiceUrl string
+
+	/** getTrend のレスポンスを最後にキャッシュした時刻 */
+	trendCachedTime time.Time
+	trendGroup      singleflight.Group
+
+	/** getIsuList のレスポンスを最後にキャッシュした時刻 */
+	isuListCachedTime time.Time
+	isuListGroup      singleflight.Group
 )
 
 type Config struct {
@@ -466,10 +477,28 @@ func getIsuList(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
+	if isuListCachedTime.IsZero() || time.Now().After(isuListCachedTime.Add(allowedCacheTime)) {
+		isuListCachedTime = time.Now()
+	}
+	// 1秒以内にキャッシュしたレスポンスが存在する場合、それを返すように
+	key := isuListCachedTime.String()
+	responseList, err, _ := isuListGroup.Do(key, func() (interface{}, error) {
+		res, err := calculateIsuList(c, jiaUserID)
+		return res, err
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, responseList)
+}
+
+func calculateIsuList(c echo.Context, jiaUserID string) ([]GetIsuListResponse, error) {
 	tx, err := db.Beginx()
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
+		return nil, c.NoContent(http.StatusInternalServerError)
 	}
 	defer tx.Rollback()
 
@@ -480,7 +509,7 @@ func getIsuList(c echo.Context) error {
 		jiaUserID)
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
+		return nil, c.NoContent(http.StatusInternalServerError)
 	}
 
 	responseList := []GetIsuListResponse{}
@@ -494,7 +523,7 @@ func getIsuList(c echo.Context) error {
 				foundLastCondition = false
 			} else {
 				c.Logger().Errorf("db error: %v", err)
-				return c.NoContent(http.StatusInternalServerError)
+				return nil, c.NoContent(http.StatusInternalServerError)
 			}
 		}
 
@@ -503,7 +532,7 @@ func getIsuList(c echo.Context) error {
 			conditionLevel, err := calculateConditionLevel(lastCondition.Condition)
 			if err != nil {
 				c.Logger().Error(err)
-				return c.NoContent(http.StatusInternalServerError)
+				return nil, c.NoContent(http.StatusInternalServerError)
 			}
 
 			formattedCondition = &GetIsuConditionResponse{
@@ -529,10 +558,10 @@ func getIsuList(c echo.Context) error {
 	err = tx.Commit()
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
+		return nil, c.NoContent(http.StatusInternalServerError)
 	}
 
-	return c.JSON(http.StatusOK, responseList)
+	return responseList, nil
 }
 
 // POST /api/isu
@@ -1091,11 +1120,29 @@ func calculateConditionLevel(condition string) (string, error) {
 // GET /api/trend
 // ISUの性格毎の最新のコンディション情報
 func getTrend(c echo.Context) error {
+	if trendCachedTime.IsZero() || time.Now().After(trendCachedTime.Add(allowedCacheTime)) {
+		trendCachedTime = time.Now()
+	}
+	// 1秒以内にキャッシュしたレスポンスが存在する場合、それを返すように
+	key := trendCachedTime.String()
+	res, err, _ := trendGroup.Do(key, func() (interface{}, error) {
+		res, err := calculateTrendRes(c)
+		return res, err
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, res)
+}
+
+func calculateTrendRes(c echo.Context) ([]TrendResponse, error) {
 	characterList := []Isu{}
 	err := db.Select(&characterList, "SELECT `character` FROM `isu` GROUP BY `character`")
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
+		return nil, c.NoContent(http.StatusInternalServerError)
 	}
 
 	res := []TrendResponse{}
@@ -1108,7 +1155,7 @@ func getTrend(c echo.Context) error {
 		)
 		if err != nil {
 			c.Logger().Errorf("db error: %v", err)
-			return c.NoContent(http.StatusInternalServerError)
+			return nil, c.NoContent(http.StatusInternalServerError)
 		}
 
 		characterInfoIsuConditions := []*TrendCondition{}
@@ -1122,7 +1169,7 @@ func getTrend(c echo.Context) error {
 			)
 			if err != nil {
 				c.Logger().Errorf("db error: %v", err)
-				return c.NoContent(http.StatusInternalServerError)
+				return nil, c.NoContent(http.StatusInternalServerError)
 			}
 
 			if len(conditions) > 0 {
@@ -1130,7 +1177,7 @@ func getTrend(c echo.Context) error {
 				conditionLevel, err := calculateConditionLevel(isuLastCondition.Condition)
 				if err != nil {
 					c.Logger().Error(err)
-					return c.NoContent(http.StatusInternalServerError)
+					return nil, c.NoContent(http.StatusInternalServerError)
 				}
 				trendCondition := TrendCondition{
 					ID:        isu.ID,
@@ -1165,8 +1212,7 @@ func getTrend(c echo.Context) error {
 				Critical:  characterCriticalIsuConditions,
 			})
 	}
-
-	return c.JSON(http.StatusOK, res)
+	return res, nil
 }
 
 // POST /api/condition/:jia_isu_uuid
