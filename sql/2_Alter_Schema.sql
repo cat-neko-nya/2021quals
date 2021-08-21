@@ -1,0 +1,1 @@
+ALTER TABLE `isu_condition` ADD `condition_level` INTEGER NOT NULL;
