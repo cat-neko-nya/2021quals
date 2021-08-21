@@ -1,1 +1,1 @@
-ALTER TABLE `isu_condition` ADD `condition_level` TINYINT(2) NOT NULL;
+ALTER TABLE `isu_condition` ADD `condition_level` INTEGER NOT NULL;

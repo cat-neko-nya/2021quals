@@ -1334,7 +1334,6 @@ func calculateConditionLevelValueFromConditionStr(conditionStr string) (int, err
 	default:
 		return 0, fmt.Errorf("unexpected warn count")
 	}
-
 	return conditionLevel, nil
 }
 
