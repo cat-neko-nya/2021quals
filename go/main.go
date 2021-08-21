@@ -43,8 +43,8 @@ const (
 	scoreConditionLevelInfo     = 3
 	scoreConditionLevelWarning  = 2
 	scoreConditionLevelCritical = 1
-	/** getTrend, getIsuList, getIsuGraph, getIsuConditions は1秒までキャッシュしてよい */
-	allowedCacheTime = time.Second
+	/** getTrend, getIsuList, getIsuGraph, getIsuConditions は1秒までキャッシュしてよい (余裕を持たせて0.9秒にしておく) */
+	allowedCacheTime = time.Millisecond * 900
 )
 
 var (
