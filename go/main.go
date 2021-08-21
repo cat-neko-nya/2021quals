@@ -736,19 +736,15 @@ func getIsuIcon(c echo.Context) error {
 
 	_, err = os.Stat(filename)
 	if err == nil {
-		file, err := os.Open(filename)
+		image, err = ioutil.ReadFile(defaultIconFilePath)
 		if err != nil {
 			return c.NoContent(http.StatusInternalServerError)
 		}
-		defer file.Close()
-		file.Read(image)
 	} else {
-		file, err := os.Open(defaultIconFilePath)
+		image, err = ioutil.ReadFile(defaultIconFilePath)
 		if err != nil {
 			return c.NoContent(http.StatusInternalServerError)
 		}
-		defer file.Close()
-		file.Read(image)
 	}
 
 	return c.Blob(http.StatusOK, "", image)
