@@ -66,7 +66,7 @@ deps:
 .PHONY: build
 build:
 	cd $(BUILD_DIR); \
-	$(MAKE) build
+	go build -o isucondition
 
 # 各種リスタート
 
@@ -105,7 +105,7 @@ mysql:
 # MYSQLスキーマ初期化
 .PHONY: initialize-mysql-schema
 initialize-mysql-schema:
-	$(MYSQL_CMD) < $(PROJECT_ROOT)/sql/schema.sql
+	$(MYSQL_CMD) < $(PROJECT_ROOT)/sql/0_Schema.sql
 
 # MySQL(^8.0.21) Redoログ無効化
 .PHONY: mysql-disable-redolog
