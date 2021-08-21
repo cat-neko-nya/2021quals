@@ -234,6 +234,10 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
+	g := e.Group("/api")
+	g.Use(CacheControlMiddleware)
+	g.GET("/isu/:jia_isu_uuid/icon", getIsuIcon)
+
 	e.POST("/initialize", postInitialize)
 
 	e.POST("/api/auth", postAuthentication)
@@ -242,7 +246,6 @@ func main() {
 	e.GET("/api/isu", getIsuList)
 	e.POST("/api/isu", postIsu)
 	e.GET("/api/isu/:jia_isu_uuid", getIsuID)
-	e.GET("/api/isu/:jia_isu_uuid/icon", getIsuIcon)
 	e.GET("/api/isu/:jia_isu_uuid/graph", getIsuGraph)
 	e.GET("/api/condition/:jia_isu_uuid", getIsuConditions)
 	e.GET("/api/trend", getTrend)
@@ -275,6 +278,13 @@ func main() {
 
 	serverPort := fmt.Sprintf(":%v", getEnv("SERVER_APP_PORT", "3000"))
 	e.Logger.Fatal(e.Start(serverPort))
+}
+
+func CacheControlMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		c.Response().Header().Set("Cache-Control", "public max-age=86400")
+		return next(c)
+	}
 }
 
 func getSession(r *http.Request) (*sessions.Session, error) {
