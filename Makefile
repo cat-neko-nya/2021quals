@@ -238,7 +238,7 @@ kataru:
 # alp
 .PHONY: alp
 alp:
-	alp ltsv --file=$(ENVOY_LOG) -m /api/admin/clarifications/[0-9]+,/api/admin/clarifications/[0-9]+,/api/contestant/benchmark_jobs/[0-9]+ --dump /tmp/dump.log --pos /tmp/alp.pos
+	alp ltsv --file=$(NGX_LOG) -m /api/admin/clarifications/[0-9]+,/api/admin/clarifications/[0-9]+,/api/contestant/benchmark_jobs/[0-9]+ --dump /tmp/dump.log --pos /tmp/alp.pos
 	alp json --load /tmp/dump.log --sort=avg -r -o count,method,uri,avg  | head -n 20 | ${DISCORDCODE}
 	alp json --load /tmp/dump.log --sort=count -r -o count,method,uri,avg  | head -n 20 | ${DISCORDCODE}
 	alp json --load /tmp/dump.log --sort=sum -r -o count,method,uri,sum  | head -n 20 | ${DISCORDCODE}
