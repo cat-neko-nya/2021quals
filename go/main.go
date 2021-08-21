@@ -1122,7 +1122,6 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 		conditionValueStrs = append(conditionValueStrs, strconv.Itoa(cv))
 	}
 	conditionValueIn := strings.Join(conditionValueStrs, ", ")
-	fmt.Println(conditionValueIn)
 
 	if startTime.IsZero() {
 		err = db.Select(&conditions,
@@ -1149,6 +1148,7 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 	conditionsResponse := []*GetIsuConditionResponse{}
 	for _, c := range conditions {
 		cLevel, err := calculateConditionLevelStrFromConditionLevelValue(c.ConditionLevel)
+		fmt.Println(cLevel)
 		if err != nil {
 			continue
 		}
