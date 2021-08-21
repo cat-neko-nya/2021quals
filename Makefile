@@ -193,9 +193,9 @@ git-init:
 before:
 	$(eval when := $(shell date "+%s"))
 	mkdir -p ~/logs/$(when)
-	@if [ -f $(NGX_LOG) ]; then \
-		sudo mv -f $(NGX_LOG) ~/logs/$(when)/ ; \
-	fi
+#	@if [ -f $(NGX_LOG) ]; then \
+#		sudo mv -f $(NGX_LOG) ~/logs/$(when)/ ; \
+#	fi
 	@if [ -f $(MYSQL_LOG) ]; then \
 		sudo mv -f $(MYSQL_LOG) ~/logs/$(when)/ ; \
 	fi
