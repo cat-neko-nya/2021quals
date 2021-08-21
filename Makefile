@@ -148,7 +148,7 @@ bench-failed:
 
 # DBで遅いクエリ, nginxへの遅いリクエストを出力
 .PHONY: analyze
-analyze: slow kataru
+analyze: slow alp
 
 # systemdを使わずにそのまま実行
 .PHONY: dev
