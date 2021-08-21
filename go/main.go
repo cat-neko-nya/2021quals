@@ -43,8 +43,8 @@ const (
 	scoreConditionLevelInfo     = 3
 	scoreConditionLevelWarning  = 2
 	scoreConditionLevelCritical = 1
-	/** getTrend, getIsuList, getIsuGraph, getIsuConditions は1秒までキャッシュしてよい (余裕を持たせて0.9秒にしておく) */
-	allowedCacheTime = time.Millisecond * 900
+	/** getTrend, getIsuList, getIsuGraph, getIsuConditions をどれくらいキャッシュさせるか (とりあえず1秒) */
+	allowedCacheTime = time.Millisecond * 1000
 )
 
 var (
@@ -63,8 +63,8 @@ var (
 	trendGroup      singleflight.Group
 
 	/** getIsuList のレスポンスを最後にキャッシュした時刻 */
-	isuListCachedTime time.Time
-	isuListGroup      singleflight.Group
+	// isuListCachedTime time.Time
+	// isuListGroup      singleflight.Group
 )
 
 type Config struct {
@@ -477,28 +477,10 @@ func getIsuList(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	if isuListCachedTime.IsZero() || time.Now().After(isuListCachedTime.Add(allowedCacheTime)) {
-		isuListCachedTime = time.Now()
-	}
-	// 1秒以内にキャッシュしたレスポンスが存在する場合、それを返すように
-	key := isuListCachedTime.String()
-	responseList, err, _ := isuListGroup.Do(key, func() (interface{}, error) {
-		res, err := calculateIsuList(c, jiaUserID)
-		return res, err
-	})
-
-	if err != nil {
-		return err
-	}
-
-	return c.JSON(http.StatusOK, responseList)
-}
-
-func calculateIsuList(c echo.Context, jiaUserID string) ([]GetIsuListResponse, error) {
 	tx, err := db.Beginx()
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
-		return nil, c.NoContent(http.StatusInternalServerError)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 	defer tx.Rollback()
 
@@ -509,7 +491,7 @@ func calculateIsuList(c echo.Context, jiaUserID string) ([]GetIsuListResponse, e
 		jiaUserID)
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
-		return nil, c.NoContent(http.StatusInternalServerError)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	responseList := []GetIsuListResponse{}
@@ -523,7 +505,7 @@ func calculateIsuList(c echo.Context, jiaUserID string) ([]GetIsuListResponse, e
 				foundLastCondition = false
 			} else {
 				c.Logger().Errorf("db error: %v", err)
-				return nil, c.NoContent(http.StatusInternalServerError)
+				return c.NoContent(http.StatusInternalServerError)
 			}
 		}
 
@@ -532,7 +514,7 @@ func calculateIsuList(c echo.Context, jiaUserID string) ([]GetIsuListResponse, e
 			conditionLevel, err := calculateConditionLevel(lastCondition.Condition)
 			if err != nil {
 				c.Logger().Error(err)
-				return nil, c.NoContent(http.StatusInternalServerError)
+				return c.NoContent(http.StatusInternalServerError)
 			}
 
 			formattedCondition = &GetIsuConditionResponse{
@@ -558,10 +540,10 @@ func calculateIsuList(c echo.Context, jiaUserID string) ([]GetIsuListResponse, e
 	err = tx.Commit()
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
-		return nil, c.NoContent(http.StatusInternalServerError)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	return responseList, nil
+	return c.JSON(http.StatusOK, responseList)
 }
 
 // POST /api/isu
