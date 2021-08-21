@@ -115,28 +115,28 @@ mysql-disable-redolog:
 
 # 実行して準備 (下の行はmysqlなしの場合)
 .PHONY: bench-dev
-bench-dev: echo-bench pull-force before slow-on initialize-mysql-schema dev
-# bench-dev: echo-bench pull-force before initialize-mysql-schema dev
+# bench-dev: echo-bench pull-force before slow-on initialize-mysql-schema dev
+bench-dev: echo-bench pull-force before initialize-mysql-schema dev
 
 # ベンチの準備 (下の行はmysqlなしの場合)
 .PHONY: bench
-bench: echo-bench pull-force before slow-on initialize-mysql-schema build restart log
-# bench: echo-bench pull-force before initialize-mysql-schema build restart log
+# bench: echo-bench pull-force before slow-on initialize-mysql-schema build restart log
+bench: echo-bench pull-force before initialize-mysql-schema build restart log
 
 # ベンチの準備 (pull-force せずにその時点のコードを反映) (下の行はmysqlなしの場合)
 .PHONY: bench-local
-bench-local: echo-bench before slow-on initialize-mysql-schema build restart log
-# bench-local: echo-bench before initialize-mysql-schema build restart log
+# bench-local: echo-bench before slow-on initialize-mysql-schema build restart log
+bench-local: echo-bench before initialize-mysql-schema build restart log
 
 # ベンチの準備 (logの代わりにtop) (下の行はmysqlなしの場合)
 .PHONY: bench-top
-bench-top: echo-bench pull-force before slow-on initialize-mysql-schema build restart top
-# bench-top: echo-bench pull-force before initialize-mysql-schema build restart top
+# bench-top: echo-bench pull-force before slow-on initialize-mysql-schema build restart top
+bench-top: echo-bench pull-force before initialize-mysql-schema build restart top
 
 # 最終ベンチ (ログの無効) (下の行はmysqlなしの場合)
 .PHONY: bench-fin
-bench-fin: echo-bench pull-force before slow-off initialize-mysql-schema build restart
-# bench-fin: echo-bench pull-force before initialize-mysql-schema build restart
+# bench-fin: echo-bench pull-force before slow-off initialize-mysql-schema build restart
+bench-fin: echo-bench pull-force before initialize-mysql-schema build restart
 
 # ログ出力はなしでベンチの準備
 .PHONY: bench-no-log
@@ -202,7 +202,7 @@ before:
 	fi
 	rm -r ../images
 	cp -r ../init_images ../images
-	sudo systemctl restart mysql
+# sudo systemctl restart mysql
 	sudo systemctl restart nginx
 
 # systemctlのログを表示
