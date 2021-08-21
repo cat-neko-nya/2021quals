@@ -1119,7 +1119,7 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 
 	var conditionValueStrs []string
 	for _, cv := range conditionValues {
-		conditionValueStrs = append(conditionValueStrs, " `condition_level` = "+strconv.Itoa(cv))
+		conditionValueStrs = append(conditionValueStrs, strconv.Itoa(cv))
 	}
 
 	input := map[string]interface{}{
