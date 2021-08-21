@@ -199,7 +199,8 @@ before:
 	@if [ -f $(MYSQL_LOG) ]; then \
 		sudo mv -f $(MYSQL_LOG) ~/logs/$(when)/ ; \
 	fi
-# rm ../images/*
+  rm -r ../images # キャッシュを消して初期データアイコンのみ復元
+	cp -r ../init_images ../images
 	sudo systemctl restart mysql
 	sudo systemctl restart nginx
 
