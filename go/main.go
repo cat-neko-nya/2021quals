@@ -1107,7 +1107,6 @@ func getIsuConditions(c echo.Context) error {
 		c.Logger().Errorf("db error: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-	c.Logger().Errorf("res: %v", conditionsResponse)
 	return c.JSON(http.StatusOK, conditionsResponse)
 }
 
@@ -1122,7 +1121,8 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 	for _, cv := range conditionValues {
 		conditionValueStrs = append(conditionValueStrs, strconv.Itoa(cv))
 	}
-	conditionValueIn := strings.Join(conditionValueStrs, ",")
+	conditionValueIn := strings.Join(conditionValueStrs, ", ")
+	fmt.Println(conditionValueIn)
 
 	if startTime.IsZero() {
 		err = db.Select(&conditions,
@@ -1150,7 +1150,7 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 	for _, c := range conditions {
 		cLevel, err := calculateConditionLevelStrFromConditionLevelValue(c.ConditionLevel)
 		if err != nil {
-			return nil, err
+			continue
 		}
 
 		data := GetIsuConditionResponse{
