@@ -345,6 +345,25 @@ func postInitialize(c echo.Context) error {
 	// 	return c.NoContent(http.StatusInternalServerError)
 	// }
 
+	// 画像書き出し
+	var idList []string
+	err = db.Select(&idList, "SELECT `jia_isu_uuid` FROM `isu`")
+	if err != nil {
+		log.Panic(err)
+	}
+	for _, id := range idList {
+		var image []byte
+		err = db.Get(&image, "SELECT `image` FROM `isu` WHERE `jia_isu_uuid` = ?", id)
+		if err != nil {
+			log.Panic(err)
+		}
+
+		err = ioutil.WriteFile("../../images/"+id, image, 0755)
+		if err != nil {
+			log.Panic(err)
+		}
+	}
+
 	return c.JSON(http.StatusOK, InitializeResponse{
 		Language: "go",
 	})
