@@ -1,1 +1,5 @@
 /sql/1_InitData.sql
+/config/nginx/certificates/
+/config/nginx/modules-enabled/
+/config/nginx/sites-enabled/
+/config/nginx/snippets/
