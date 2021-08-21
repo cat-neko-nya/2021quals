@@ -3,7 +3,8 @@
 SHELL = bash
 
 export GO111MODULE=on
-DB_HOST:=127.0.0.1
+# DB_HOST:=127.0.0.1
+DB_HOST:=192.168.0.13 # server3
 DB_PORT:=3306
 
 ### TODO ###
