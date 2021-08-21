@@ -199,7 +199,7 @@ before:
 	@if [ -f $(MYSQL_LOG) ]; then \
 		sudo mv -f $(MYSQL_LOG) ~/logs/$(when)/ ; \
 	fi
-	rm ../images/*
+# rm ../images/*
 	sudo systemctl restart mysql
 	sudo systemctl restart nginx
 
