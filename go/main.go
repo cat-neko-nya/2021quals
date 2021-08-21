@@ -1119,28 +1119,41 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 
 	var conditionValueStrs []string
 	for _, cv := range conditionValues {
-		conditionValueStrs = append(conditionValueStrs, strconv.Itoa(cv))
+		conditionValueStrs = append(conditionValueStrs, " `condition_level` = "+strconv.Itoa(cv))
 	}
-	conditionValueIn := strings.Join(conditionValueStrs, ", ")
+
+	input := map[string]interface{}{
+		"conditionLevels": strings.Join(conditionValueStrs, ","),
+		"jiaIsuUUID":      jiaIsuUUID,
+		"endTime":         endTime,
+		"startTime":       startTime,
+	}
+
+	var query string
 
 	if startTime.IsZero() {
-		err = db.Select(&conditions,
-			"SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = ?"+
-				"	AND `condition_level` in (?)"+
-				"	AND `timestamp` < ?"+
-				"	ORDER BY `timestamp` DESC",
-			jiaIsuUUID, conditionValueIn, endTime,
-		)
+		query = "SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = :jiaIsuUUID" +
+			"	AND `condition_level` IN (:conditionLevels)" +
+			"	AND `timestamp` < :endTime" +
+			"	ORDER BY `timestamp` DESC"
 	} else {
-		err = db.Select(&conditions,
-			"SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = ?"+
-				"	AND `condition_level` in (?)"+
-				"	AND `timestamp` < ?"+
-				"	AND ? <= `timestamp`"+
-				"	ORDER BY `timestamp` DESC",
-			jiaIsuUUID, conditionValueIn, endTime, startTime,
-		)
+		query =
+			"SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = :jiaIsuUUID" +
+				"	AND `condition_level` IN (:conditionLevels)" +
+				"	AND `timestamp` < :endTime" +
+				"	AND :startTime <= `timestamp`" +
+				"	ORDER BY `timestamp` DESC"
 	}
+	query, args, err := sqlx.Named(query, input)
+	if err != nil {
+		return nil, fmt.Errorf("db error: %v", err)
+	}
+	query, args, err = sqlx.In(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("db error: %v", err)
+	}
+	query = db.Rebind(query)
+	err = db.Select(&conditions, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("db error: %v", err)
 	}
@@ -1148,7 +1161,7 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 	conditionsResponse := []*GetIsuConditionResponse{}
 	for _, c := range conditions {
 		cLevel, err := calculateConditionLevelStrFromConditionLevelValue(c.ConditionLevel)
-		fmt.Println(cLevel)
+		fmt.Println(c)
 		if err != nil {
 			continue
 		}
