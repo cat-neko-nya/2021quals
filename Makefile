@@ -199,8 +199,8 @@ before:
 	@if [ -f $(MYSQL_LOG) ]; then \
 		sudo mv -f $(MYSQL_LOG) ~/logs/$(when)/ ; \
 	fi
-# sudo systemctl restart mysql
-# sudo systemctl restart nginx
+	sudo systemctl restart mysql
+	sudo systemctl restart nginx
 
 # systemctlのログを表示
 .PHONY: log
