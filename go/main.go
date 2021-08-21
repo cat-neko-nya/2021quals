@@ -24,6 +24,8 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
+
+	_ "net/http/pprof"
 )
 
 const (
@@ -213,6 +215,10 @@ func main() {
 	e := echo.New()
 	e.Debug = true
 	e.Logger.SetLevel(log.DEBUG)
+
+	go func() {
+		http.ListenAndServe("localhost:6060", nil)
+	}()
 
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
@@ -558,11 +564,11 @@ func postIsu(c echo.Context) error {
 	var image []byte
 
 	if useDefaultImage {
-		image, err = ioutil.ReadFile(defaultIconFilePath)
-		if err != nil {
-			c.Logger().Error(err)
-			return c.NoContent(http.StatusInternalServerError)
-		}
+		// image, err = ioutil.ReadFile(defaultIconFilePath)
+		// if err != nil {
+		// 	c.Logger().Error(err)
+		// 	return c.NoContent(http.StatusInternalServerError)
+		// }
 	} else {
 		file, err := fh.Open()
 		if err != nil {
@@ -576,6 +582,13 @@ func postIsu(c echo.Context) error {
 			c.Logger().Error(err)
 			return c.NoContent(http.StatusInternalServerError)
 		}
+
+		target_file, err := os.Create("../../images/" + jiaIsuUUID)
+		if err != nil {
+			return c.NoContent(http.StatusInternalServerError)
+		}
+		defer target_file.Close()
+		target_file.Write(image)
 	}
 
 	tx, err := db.Beginx()
@@ -586,8 +599,8 @@ func postIsu(c echo.Context) error {
 	defer tx.Rollback()
 
 	_, err = tx.Exec("INSERT INTO `isu`"+
-		"	(`jia_isu_uuid`, `name`, `image`, `jia_user_id`) VALUES (?, ?, ?, ?)",
-		jiaIsuUUID, isuName, image, jiaUserID)
+		"	(`jia_isu_uuid`, `name`, `jia_user_id`) VALUES (?, ?, ?)",
+		jiaIsuUUID, isuName, jiaUserID)
 	if err != nil {
 		mysqlErr, ok := err.(*mysql.MySQLError)
 
@@ -710,15 +723,40 @@ func getIsuIcon(c echo.Context) error {
 	jiaIsuUUID := c.Param("jia_isu_uuid")
 
 	var image []byte
-	err = db.Get(&image, "SELECT `image` FROM `isu` WHERE `jia_user_id` = ? AND `jia_isu_uuid` = ?",
+	var exist_isu bool
+	err = db.Get(&exist_isu, "SELECT EXISTS (SELECT 1 FROM `isu` WHERE `jia_user_id` = ? AND `jia_isu_uuid` = ?)",
 		jiaUserID, jiaIsuUUID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return c.String(http.StatusNotFound, "not found: isu")
-		}
-
 		c.Logger().Errorf("db error: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
+	} else {
+		if !exist_isu {
+			return c.String(http.StatusNotFound, "not found: isu")
+		}
+	}
+	// err = db.Get(&image, "SELECT `image` FROM `isu` WHERE `jia_user_id` = ? AND `jia_isu_uuid` = ?",
+	// 	jiaUserID, jiaIsuUUID)
+	// if err != nil {
+	// 	if errors.Is(err, sql.ErrNoRows) {
+	// 		return c.String(http.StatusNotFound, "not found: isu")
+	// 	}
+
+	// 	c.Logger().Errorf("db error: %v", err)
+	// 	return c.NoContent(http.StatusInternalServerError)
+	// }
+	filename := "../../images/" + jiaIsuUUID
+
+	_, err = os.Stat(filename)
+	if err == nil {
+		image, err = ioutil.ReadFile(filename)
+		if err != nil {
+			return c.NoContent(http.StatusInternalServerError)
+		}
+	} else {
+		image, err = ioutil.ReadFile(defaultIconFilePath)
+		if err != nil {
+			return c.NoContent(http.StatusInternalServerError)
+		}
 	}
 
 	return c.Blob(http.StatusOK, "", image)
