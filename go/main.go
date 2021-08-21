@@ -1127,25 +1127,41 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 	var query string
 
 	if startTime.IsZero() {
-		query = "SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = :jiaIsuUUID" +
-			"	AND `condition_level` IN (:conditionLevels)" +
-			"	AND `timestamp` < :endTime" +
-			"	ORDER BY `timestamp` DESC"
-	} else {
-		query =
-			"SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = :jiaIsuUUID" +
+		if len(conditionValues) == 3 {
+			query = "SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = :jiaIsuUUID" +
+				"	AND `timestamp` < :endTime" +
+				"	ORDER BY `timestamp` DESC"
+		} else {
+			query = "SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = :jiaIsuUUID" +
 				"	AND `condition_level` IN (:conditionLevels)" +
 				"	AND `timestamp` < :endTime" +
-				"	AND :startTime <= `timestamp`" +
 				"	ORDER BY `timestamp` DESC"
+		}
+	} else {
+		if len(conditionValues) == 3 {
+			query =
+				"SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = :jiaIsuUUID" +
+					"	AND `timestamp` < :endTime" +
+					"	AND :startTime <= `timestamp`" +
+					"	ORDER BY `timestamp` DESC"
+		} else {
+			query =
+				"SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = :jiaIsuUUID" +
+					"	AND `condition_level` IN (:conditionLevels)" +
+					"	AND `timestamp` < :endTime" +
+					"	AND :startTime <= `timestamp`" +
+					"	ORDER BY `timestamp` DESC"
+		}
 	}
 	query, args, err := sqlx.Named(query, input)
 	if err != nil {
 		return nil, fmt.Errorf("db error: %v", err)
 	}
-	query, args, err = sqlx.In(query, args...)
-	if err != nil {
-		return nil, fmt.Errorf("db error: %v", err)
+	if len(conditionValues) != 3 {
+		query, args, err = sqlx.In(query, args...)
+		if err != nil {
+			return nil, fmt.Errorf("db error: %v", err)
+		}
 	}
 	query = db.Rebind(query)
 	err = db.Select(&conditions, query, args...)
