@@ -386,6 +386,24 @@ func postInitialize(c echo.Context) error {
 			return c.NoContent(http.StatusInternalServerError)
 		}
 	}
+	// 画像書き出し
+	// var idList []string
+	// err = db.Select(&idList, "SELECT `jia_isu_uuid` FROM `isu`")
+	// if err != nil {
+	// 	log.Panic(err)
+	// }
+	// for _, id := range idList {
+	// 	var image []byte
+	// 	err = db.Get(&image, "SELECT `image` FROM `isu` WHERE `jia_isu_uuid` = ?", id)
+	// 	if err != nil {
+	// 		log.Panic(err)
+	// 	}
+
+	// 	err = ioutil.WriteFile("../../images/"+id, image, 0755)
+	// 	if err != nil {
+	// 		log.Panic(err)
+	// 	}
+	// }
 
 	return c.JSON(http.StatusOK, InitializeResponse{
 		Language: "go",
@@ -624,12 +642,10 @@ func postIsu(c echo.Context) error {
 			return c.NoContent(http.StatusInternalServerError)
 		}
 
-		target_file, err := os.Create("../../images/" + jiaIsuUUID)
+		err = ioutil.WriteFile("../../images/"+jiaIsuUUID, image, 0755)
 		if err != nil {
 			return c.NoContent(http.StatusInternalServerError)
 		}
-		defer target_file.Close()
-		target_file.Write(image)
 	}
 
 	tx, err := db.Beginx()
@@ -764,6 +780,7 @@ func getIsuIcon(c echo.Context) error {
 	jiaIsuUUID := c.Param("jia_isu_uuid")
 
 	var image []byte
+
 	var exist_isu bool
 	err = db.Get(&exist_isu, "SELECT EXISTS (SELECT 1 FROM `isu` WHERE `jia_user_id` = ? AND `jia_isu_uuid` = ?)",
 		jiaUserID, jiaIsuUUID)
@@ -775,6 +792,7 @@ func getIsuIcon(c echo.Context) error {
 			return c.String(http.StatusNotFound, "not found: isu")
 		}
 	}
+
 	// err = db.Get(&image, "SELECT `image` FROM `isu` WHERE `jia_user_id` = ? AND `jia_isu_uuid` = ?",
 	// 	jiaUserID, jiaIsuUUID)
 	// if err != nil {
