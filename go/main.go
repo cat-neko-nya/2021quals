@@ -263,25 +263,6 @@ func main() {
 
 	serverPort := fmt.Sprintf(":%v", getEnv("SERVER_APP_PORT", "3000"))
 	e.Logger.Fatal(e.Start(serverPort))
-
-	// 画像書き出し
-	var idList []string
-	err = db.Get(&idList, "SELECT jia_isu_uuid FROM `isu`")
-	if err != nil {
-		log.Panic(err)
-	}
-	for _, id := range idList {
-		var image []byte
-		err = db.Get(&image, "SELECT `image` FROM `isu` WHERE `jia_isu_uuid` = ?", id)
-		if err != nil {
-			log.Panic(err)
-		}
-
-		err = ioutil.WriteFile("../../images/"+id, image, 0755)
-		if err != nil {
-			log.Panic(err)
-		}
-	}
 }
 
 func getSession(r *http.Request) (*sessions.Session, error) {
