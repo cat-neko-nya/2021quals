@@ -102,6 +102,7 @@ type IsuCondition struct {
 	IsSitting      bool      `db:"is_sitting"`
 	Condition      string    `db:"condition"`
 	ConditionLevel int       `db:"condition_level"`
+	ConditionValue int       `db:"condition_value"`
 	Message        string    `db:"message"`
 	CreatedAt      time.Time `db:"created_at"`
 }
@@ -386,9 +387,11 @@ func postInitialize(c echo.Context) error {
 			c.Logger().Errorf("db init error: %v", err)
 			return c.NoContent(http.StatusInternalServerError)
 		}
+		condVal := caluculateConditionValueFromConditionStr(condition.Condition)
 		_, err = db.Exec(
-			"UPDATE `isu_condition` SET `condition_level` = ? WHERE `id` = ?",
+			"UPDATE `isu_condition` SET `condition_level` = ?, `condition_value` = ?, WHERE `id` = ?",
 			condLevel,
+			condVal,
 			condition.ID,
 		)
 		if err != nil {
@@ -998,34 +1001,18 @@ func generateIsuGraphResponse(tx *sqlx.Tx, jiaIsuUUID string, graphDate time.Tim
 func calculateGraphDataPoint(isuConditions []IsuCondition) (GraphDataPoint, error) {
 	conditionsCount := map[string]int{"is_broken": 0, "is_dirty": 0, "is_overweight": 0}
 	rawScore := 0
-	for _, condition := range isuConditions {
-		badConditionsCount := 0
-
-		if !isValidConditionFormat(condition.Condition) {
-			return GraphDataPoint{}, fmt.Errorf("invalid condition format")
-		}
-
-		for _, condStr := range strings.Split(condition.Condition, ",") {
-			keyValue := strings.Split(condStr, "=")
-
-			conditionName := keyValue[0]
-			if keyValue[1] == "true" {
-				conditionsCount[conditionName] += 1
-				badConditionsCount++
-			}
-		}
-
-		if badConditionsCount >= 3 {
-			rawScore += scoreConditionLevelCritical
-		} else if badConditionsCount >= 1 {
-			rawScore += scoreConditionLevelWarning
-		} else {
-			rawScore += scoreConditionLevelInfo
-		}
-	}
-
 	sittingCount := 0
 	for _, condition := range isuConditions {
+		rawScore += 3 - condition.ConditionLevel
+		if isDirty(&condition) {
+			conditionsCount["is_dirty"] += 1
+		}
+		if isOverweight(&condition) {
+			conditionsCount["is_overweight"] += 1
+		}
+		if isBroken(&condition) {
+			conditionsCount["is_broken"] += 1
+		}
 		if condition.IsSitting {
 			sittingCount++
 		}
@@ -1405,12 +1392,13 @@ func postIsuCondition(c echo.Context) error {
 		if err != nil {
 			return c.String(http.StatusBadRequest, "bad request body")
 		}
+		condVal := caluculateConditionValueFromConditionStr(cond.Condition)
 
 		_, err = tx.Exec(
 			"INSERT INTO `isu_condition`"+
-				"	(`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `condition_level`, `message`)"+
+				"	(`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `condition_level`, `condition_value, `message`)"+
 				"	VALUES (?, ?, ?, ?, ?, ?)",
-			jiaIsuUUID, timestamp, cond.IsSitting, cond.Condition, condLevel, cond.Message)
+			jiaIsuUUID, timestamp, cond.IsSitting, cond.Condition, condLevel, condVal, cond.Message)
 		if err != nil {
 			c.Logger().Errorf("db error: %v", err)
 			return c.NoContent(http.StatusInternalServerError)
@@ -1518,4 +1506,35 @@ func calculateConditionLevelStrFromConditionLevelValue(conditionLevel int) (stri
 		return "", fmt.Errorf("unexpected level")
 	}
 	return conditionLevelStr, nil
+}
+
+// コンディションからコンディションを表す数値を計算
+//  最下位bit      2bitめ              3bitめ
+// "is_dirty=true,is_overweight=false,is_broken=true" -> 5
+func caluculateConditionValueFromConditionStr(conditionStr string) int {
+	result := 0
+	conds := strings.Split(conditionStr, ",")
+	for _, cond := range conds {
+		kv := strings.Split(cond, "=")
+		if kv[0] == "is_dirty" && kv[1] == "true" {
+			result += 1
+		}
+		if kv[0] == "is_overweight" && kv[1] == "true" {
+			result += 2
+		}
+		if kv[0] == "is_broken" && kv[1] == "true" {
+			result += 4
+		}
+	}
+	return result
+}
+
+func isDirty(condition *IsuCondition) bool {
+	return condition.ConditionValue&1 == 1
+}
+func isOverweight(condition *IsuCondition) bool {
+	return (condition.ConditionValue>>1)&1 == 1
+}
+func isBroken(condition *IsuCondition) bool {
+	return (condition.ConditionValue>>2)&1 == 1
 }
