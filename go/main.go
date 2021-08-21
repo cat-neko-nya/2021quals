@@ -1170,14 +1170,14 @@ func getTrend(c echo.Context) error {
 }
 
 func calculateTrendRes(c echo.Context) ([]TrendResponse, error) {
-	// characterList := []Isu{}
-	// err := db.Select(&characterList, "SELECT `character` FROM `isu` GROUP BY `character`")
-	// if err != nil {
-	// 	c.Logger().Errorf("db error: %v", err)
-	// 	return nil, c.NoContent(http.StatusInternalServerError)
-	// }
+	characterList := []Isu{}
+	err := db.Select(&characterList, "SELECT `character` FROM `isu` GROUP BY `character`")
+	if err != nil {
+		c.Logger().Errorf("db error: %v", err)
+		return nil, c.NoContent(http.StatusInternalServerError)
+	}
 
-	characterList := []string{"いじっぱり", "うっかりや", "おくびょう", "おだやか", "おっとり", "おとなしい", "がんばりや", "きまぐれ ", "さみしがり", "しんちょう", "すなお", "ずぶとい", "せっかち", "てれや", "なまいき", "のうてんき", "のんき", "ひかえめ", "まじめ", "むじゃき", "やんちゃ", "ゆうかん", "ようき", "れいせい", "わんぱく"}
+	// characterList := []string{"いじっぱり", "うっかりや", "おくびょう", "おだやか", "おっとり", "おとなしい", "がんばりや", "きまぐれ ", "さみしがり", "しんちょう", "すなお", "ずぶとい", "せっかち", "てれや", "なまいき", "のうてんき", "のんき", "ひかえめ", "まじめ", "むじゃき", "やんちゃ", "ゆうかん", "ようき", "れいせい", "わんぱく"}
 
 	res := []TrendResponse{}
 
@@ -1185,7 +1185,7 @@ func calculateTrendRes(c echo.Context) ([]TrendResponse, error) {
 		isuList := []Isu{}
 		err := db.Select(&isuList,
 			"SELECT `id`, `jia_isu_uuid` FROM `isu` WHERE `character` = ?",
-			character,
+			character.Character,
 		)
 		if err != nil {
 			c.Logger().Errorf("db error: %v", err)
@@ -1205,7 +1205,7 @@ func calculateTrendRes(c echo.Context) ([]TrendResponse, error) {
 			conditions := []IsuConditionWithIsuId{}
 
 			// あるcharacterについて、uuidごとにtimestampが最新のconditionだけを拾う
-			err = db.Select(&conditions, "select isu.id as isu_id,isu_condition.condition,isu_condition.timestamp from isu_condition join isu on isu.jia_isu_uuid=isu_condition.jia_isu_uuid where isu_condition.id in (select max(isu_condition.id) from isu_condition join isu on isu.jia_isu_uuid=isu_condition.jia_isu_uuid where isu.character=? group by isu_condition.jia_isu_uuid) order by timestamp desc", character)
+			err = db.Select(&conditions, "select isu.id as isu_id,isu_condition.condition,isu_condition.timestamp from isu_condition join isu on isu.jia_isu_uuid=isu_condition.jia_isu_uuid where isu_condition.id in (select max(isu_condition.id) from isu_condition join isu on isu.jia_isu_uuid=isu_condition.jia_isu_uuid where isu.character=? group by isu_condition.jia_isu_uuid) order by timestamp desc", character.Character)
 			if err != nil {
 				c.Logger().Errorf("db error: %v", err)
 				return nil, c.NoContent(http.StatusInternalServerError)
@@ -1277,7 +1277,7 @@ func calculateTrendRes(c echo.Context) ([]TrendResponse, error) {
 		// })
 		res = append(res,
 			TrendResponse{
-				Character: character,
+				Character: character.Character,
 				Info:      characterInfoIsuConditions,
 				Warning:   characterWarningIsuConditions,
 				Critical:  characterCriticalIsuConditions,
