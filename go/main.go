@@ -737,7 +737,7 @@ func getIsuID(c echo.Context) error {
 // GET /api/isu/:jia_isu_uuid/icon
 // ISUのアイコンを取得
 func getIsuIcon(c echo.Context) error {
-	_, errStatusCode, err := getUserIDFromSession(c)
+	jiaUserID, errStatusCode, err := getUserIDFromSession(c)
 	if err != nil {
 		if errStatusCode == http.StatusUnauthorized {
 			return c.String(http.StatusUnauthorized, "you are not signed in")
@@ -751,17 +751,17 @@ func getIsuIcon(c echo.Context) error {
 
 	var image []byte
 
-	// var exist_isu bool
-	// err = db.Get(&exist_isu, "SELECT EXISTS (SELECT 1 FROM `isu` WHERE `jia_user_id` = ? AND `jia_isu_uuid` = ?)",
-	// 	jiaUserID, jiaIsuUUID)
-	// if err != nil {
-	// 	c.Logger().Errorf("db error: %v", err)
-	// 	return c.NoContent(http.StatusInternalServerError)
-	// } else {
-	// 	if !exist_isu {
-	// 		return c.String(http.StatusNotFound, "not found: isu")
-	// 	}
-	// }
+	var exist_isu bool
+	err = db.Get(&exist_isu, "SELECT EXISTS (SELECT 1 FROM `isu` WHERE `jia_user_id` = ? AND `jia_isu_uuid` = ?)",
+		jiaUserID, jiaIsuUUID)
+	if err != nil {
+		c.Logger().Errorf("db error: %v", err)
+		return c.NoContent(http.StatusInternalServerError)
+	} else {
+		if !exist_isu {
+			return c.String(http.StatusNotFound, "not found: isu")
+		}
+	}
 
 	// err = db.Get(&image, "SELECT `image` FROM `isu` WHERE `jia_user_id` = ? AND `jia_isu_uuid` = ?",
 	// 	jiaUserID, jiaIsuUUID)
