@@ -1199,7 +1199,7 @@ func calculateTrendRes(c echo.Context) ([]TrendResponse, error) {
 		for _, isu := range isuList {
 			conditions := []IsuCondition{}
 			err = db.Select(&conditions,
-				"SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = ? ORDER BY timestamp DESC LIMIT 1", // 最新一件で良いはず
+				"SELECT `condition`, `timestamp` FROM `isu_condition` WHERE `jia_isu_uuid` = ? ORDER BY timestamp DESC LIMIT 1", // 最新一件で良いはず
 				isu.JIAIsuUUID,
 			)
 			if err != nil {
