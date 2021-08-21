@@ -1107,7 +1107,7 @@ func getIsuConditions(c echo.Context) error {
 		c.Logger().Errorf("db error: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-	c.Logger().Infof("res: %v", conditionsResponse)
+	c.Logger().Errorf("res: %v", conditionsResponse)
 	return c.JSON(http.StatusOK, conditionsResponse)
 }
 
