@@ -1410,11 +1410,12 @@ func postIsuCondition(c echo.Context) error {
 func insertIsuCondition() {
 	var ch <-chan PostIsuConditionRequestWithIsuUUID = postIsuConditionChannel
 	req := make([]PostIsuConditionRequestWithIsuUUID, 10000)
+	ticker := time.NewTicker(500 * time.Millisecond)
 	for {
 		select {
 		case cond := <-ch:
 			req = append(req, cond)
-		case <-time.After(800 * time.Millisecond):
+		case <-ticker.C:
 			tx, err := db.Beginx()
 			defer tx.Rollback()
 
