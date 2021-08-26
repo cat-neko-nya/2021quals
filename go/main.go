@@ -1410,13 +1410,17 @@ func postIsuCondition(c echo.Context) error {
 func insertIsuCondition() {
 	var ch <-chan PostIsuConditionRequestWithIsuUUID = postIsuConditionChannel
 	var req []PostIsuConditionRequestWithIsuUUID
+	var values []string
 	req = make([]PostIsuConditionRequestWithIsuUUID, 10000)
+	values = make([]string, 10000)
+
 	ticker := time.NewTicker(500 * time.Millisecond)
 	for {
 		select {
 		case cond := <-ch:
 			req = append(req, cond)
 		case <-ticker.C:
+			params := make([]interface{}, 10000)
 			for _, cond := range req {
 				timestamp := time.Unix(cond.Timestamp, 0)
 
@@ -1424,17 +1428,20 @@ func insertIsuCondition() {
 				if err != nil {
 					return
 				}
-				_, err = db.Exec(
-					"INSERT INTO `isu_condition`"+
-						"	(`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `condition_level`, `message`)"+
-						"	VALUES (?, ?, ?, ?, ?, ?)",
-					cond.JIAIsuUUID, timestamp, cond.IsSitting, cond.Condition, condLevel, cond.Message)
-				if err != nil {
-					_ = fmt.Errorf("db error: %v", err)
-					return
-				}
+				params = append(params, cond.JIAIsuUUID, timestamp, cond.IsSitting, cond.Condition, condLevel, cond.Message)
+				values = append(values, "(?, ?, ?, ?, ?, ?)")
+			}
+			_, err := db.Exec(
+				"INSERT INTO `isu_condition`"+
+					"	(`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `condition_level`, `message`)"+
+					"	VALUES "+strings.Join(values, ","),
+				params...)
+			if err != nil {
+				_ = fmt.Errorf("db error: %v", err)
+				return
 			}
 			req = make([]PostIsuConditionRequestWithIsuUUID, 10000)
+			values = make([]string, 10000)
 		}
 	}
 
