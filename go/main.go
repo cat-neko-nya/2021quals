@@ -1409,20 +1409,14 @@ func postIsuCondition(c echo.Context) error {
 
 func insertIsuCondition() {
 	var ch <-chan PostIsuConditionRequestWithIsuUUID = postIsuConditionChannel
-	req := make([]PostIsuConditionRequestWithIsuUUID, 10000)
+	var req []PostIsuConditionRequestWithIsuUUID
+	req = make([]PostIsuConditionRequestWithIsuUUID, 10000)
 	ticker := time.NewTicker(500 * time.Millisecond)
 	for {
 		select {
 		case cond := <-ch:
 			req = append(req, cond)
 		case <-ticker.C:
-			tx, err := db.Beginx()
-			defer tx.Rollback()
-
-			if err != nil {
-				_ = fmt.Errorf("db error: %v", err)
-				return
-			}
 			for _, cond := range req {
 				timestamp := time.Unix(cond.Timestamp, 0)
 
@@ -1430,7 +1424,7 @@ func insertIsuCondition() {
 				if err != nil {
 					return
 				}
-				_, err = tx.Exec(
+				_, err = db.Exec(
 					"INSERT INTO `isu_condition`"+
 						"	(`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `condition_level`, `message`)"+
 						"	VALUES (?, ?, ?, ?, ?, ?)",
@@ -1440,11 +1434,7 @@ func insertIsuCondition() {
 					return
 				}
 			}
-			err = tx.Commit()
-			if err != nil {
-				_ = fmt.Errorf("db error: %v", err)
-				return
-			}
+			req = make([]PostIsuConditionRequestWithIsuUUID, 10000)
 		}
 	}
 
