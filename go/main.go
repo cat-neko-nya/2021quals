@@ -795,7 +795,7 @@ func getIsuIcon(c echo.Context) error {
 
 	jiaIsuUUID := c.Param("jia_isu_uuid")
 
-	var image []byte
+	// var image []byte
 
 	var exist_isu bool
 	err = db.Get(&exist_isu, "SELECT EXISTS (SELECT 1 FROM `isu` WHERE `jia_user_id` = ? AND `jia_isu_uuid` = ?)",
@@ -819,22 +819,23 @@ func getIsuIcon(c echo.Context) error {
 	// 	c.Logger().Errorf("db error: %v", err)
 	// 	return c.NoContent(http.StatusInternalServerError)
 	// }
-	filename := "../../images/" + jiaIsuUUID
+	filename := "/icon/" + jiaIsuUUID
 
-	_, err = os.Stat(filename)
-	if err == nil {
-		image, err = ioutil.ReadFile(filename)
-		if err != nil {
-			return c.NoContent(http.StatusInternalServerError)
-		}
-	} else {
-		image, err = ioutil.ReadFile(defaultIconFilePath)
-		if err != nil {
-			return c.NoContent(http.StatusInternalServerError)
-		}
-	}
+	// _, err = os.Stat(filename)
+	// if err == nil {
+	// 	image, err = ioutil.ReadFile(filename)
+	// 	if err != nil {
+	// 		return c.NoContent(http.StatusInternalServerError)
+	// 	}
+	// } else {
+	// 	image, err = ioutil.ReadFile(defaultIconFilePath)
+	// 	if err != nil {
+	// 		return c.NoContent(http.StatusInternalServerError)
+	// 	}
+	// }
 
-	return c.Blob(http.StatusOK, "", image)
+	c.Response().Header().Set("X-Accel-Redirect", filename)
+	return c.NoContent(http.StatusOK)
 }
 
 // GET /api/isu/:jia_isu_uuid/graph
