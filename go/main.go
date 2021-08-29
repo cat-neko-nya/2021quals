@@ -835,7 +835,7 @@ func getIsuIcon(c echo.Context) error {
 	// }
 
 	c.Response().Header().Set("X-Accel-Redirect", filename)
-	// return c.NoContent(http.StatusOK)
+	return c.NoContent(http.StatusOK)
 }
 
 // GET /api/isu/:jia_isu_uuid/graph
