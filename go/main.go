@@ -63,6 +63,9 @@ var (
 	/** getIsuList のレスポンスを最後にキャッシュした時刻 */
 	// isuListCachedTime time.Time
 	// isuListGroup      singleflight.Group
+
+	/** conditionをpostするgoroutine用のchannel */
+	postIsuConditionChannel chan PostIsuConditionRequestWithIsuUUID = make(chan PostIsuConditionRequestWithIsuUUID)
 )
 
 type Config struct {
@@ -179,6 +182,11 @@ type PostIsuConditionRequest struct {
 	Timestamp int64  `json:"timestamp"`
 }
 
+type PostIsuConditionRequestWithIsuUUID struct {
+	JIAIsuUUID string `json:"jia_isu_uuid"`
+	PostIsuConditionRequest
+}
+
 type JIAServiceRequest struct {
 	TargetBaseURL string `json:"target_base_url"`
 	IsuUUID       string `json:"isu_uuid"`
@@ -273,6 +281,9 @@ func main() {
 
 	serverPort := fmt.Sprintf(":%v", getEnv("SERVER_APP_PORT", "3000"))
 	e.Logger.Fatal(e.Start(serverPort))
+
+	// postIsuConditionをバッチで挿入する氏
+	go insertIsuCondition()
 }
 
 func CacheControlMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
@@ -1352,6 +1363,8 @@ func calculateTrendRes(c echo.Context) ([]TrendResponse, error) {
 // POST /api/condition/:jia_isu_uuid
 // ISUからのコンディションを受け取る
 func postIsuCondition(c echo.Context) error {
+	var ch chan<- PostIsuConditionRequestWithIsuUUID = postIsuConditionChannel
+
 	// TODO: 一定割合リクエストを落としてしのぐようにしたが、本来は全量さばけるようにすべき
 	dropProbability := 0.9
 	if rand.Float64() <= dropProbability {
@@ -1372,15 +1385,8 @@ func postIsuCondition(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "bad request body")
 	}
 
-	tx, err := db.Beginx()
-	if err != nil {
-		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-	defer tx.Rollback()
-
 	var count int
-	err = tx.Get(&count, "SELECT COUNT(*) FROM `isu` WHERE `jia_isu_uuid` = ?", jiaIsuUUID)
+	err = db.Get(&count, "SELECT COUNT(*) FROM `isu` WHERE `jia_isu_uuid` = ?", jiaIsuUUID)
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -1390,36 +1396,54 @@ func postIsuCondition(c echo.Context) error {
 	}
 
 	for _, cond := range req {
-		timestamp := time.Unix(cond.Timestamp, 0)
-
 		if !isValidConditionFormat(cond.Condition) {
 			return c.String(http.StatusBadRequest, "bad request body")
 		}
-
-		condLevel, err := calculateConditionLevelValueFromConditionStr(cond.Condition)
-		if err != nil {
-			return c.String(http.StatusBadRequest, "bad request body")
+		ch <- PostIsuConditionRequestWithIsuUUID{
+			JIAIsuUUID:              jiaIsuUUID,
+			PostIsuConditionRequest: cond,
 		}
-
-		_, err = tx.Exec(
-			"INSERT INTO `isu_condition`"+
-				"	(`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `condition_level`, `message`)"+
-				"	VALUES (?, ?, ?, ?, ?, ?)",
-			jiaIsuUUID, timestamp, cond.IsSitting, cond.Condition, condLevel, cond.Message)
-		if err != nil {
-			c.Logger().Errorf("db error: %v", err)
-			return c.NoContent(http.StatusInternalServerError)
-		}
-
 	}
-
-	err = tx.Commit()
-	if err != nil {
-		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-
 	return c.NoContent(http.StatusAccepted)
+}
+
+func insertIsuCondition() {
+	var (
+		ch      <-chan PostIsuConditionRequestWithIsuUUID = postIsuConditionChannel
+		req     []PostIsuConditionRequestWithIsuUUID      = make([]PostIsuConditionRequestWithIsuUUID, 0, 1000)
+		queries []string                                  = make([]string, 0, 1000)
+	)
+
+	ticker := time.NewTicker(500 * time.Millisecond)
+	for {
+		select {
+		case cond := <-ch:
+			req = append(req, cond)
+		case <-ticker.C:
+			params := make([]interface{}, 0, 10000)
+			for _, cond := range req {
+				timestamp := time.Unix(cond.Timestamp, 0)
+
+				condLevel, err := calculateConditionLevelValueFromConditionStr(cond.Condition)
+				if err != nil {
+					return
+				}
+				params = append(params, cond.JIAIsuUUID, timestamp, cond.IsSitting, cond.Condition, condLevel, cond.Message)
+				queries = append(queries, "(?, ?, ?, ?, ?, ?)")
+			}
+			_, err := db.Exec(
+				"INSERT INTO `isu_condition`"+
+					"	(`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `condition_level`, `message`)"+
+					"	VALUES "+strings.Join(queries, ","),
+				params...)
+			if err != nil {
+				_ = fmt.Errorf("db error: %v", err)
+				return
+			}
+			req = make([]PostIsuConditionRequestWithIsuUUID, 0, 1000)
+			queries = make([]string, 0, 1000)
+		}
+	}
 }
 
 // ISUのコンディションの文字列がcsv形式になっているか検証
