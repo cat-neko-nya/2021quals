@@ -1089,10 +1089,6 @@ func getIsuConditions(c echo.Context) error {
 	if err != nil {
 		return c.String(http.StatusBadRequest, "bad format: condition_level")
 	}
-	// conditionLevel := map[string]interface{}{}
-	// for _, level := range strings.Split(conditionLevelCSV, ",") {
-	// 	conditionLevel[level] = struct{}{}
-	// }
 
 	startTimeStr := c.QueryParam("start_time")
 	var startTime time.Time
@@ -1127,58 +1123,70 @@ func getIsuConditions(c echo.Context) error {
 }
 
 // ISUのコンディションをDBから取得
-func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, conditionValues []int, startTime time.Time,
+func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, conditionLevels []int, startTime time.Time,
 	limit int, isuName string) ([]*GetIsuConditionResponse, error) {
 
 	conditions := []IsuCondition{}
 	var err error
 
+	lvMax := -9999999
+	lvMin := 9999999
+	for _, s := range conditionLevels {
+		if s > lvMax {
+			lvMax = s
+		}
+		if s < lvMin {
+			lvMin = s
+		}
+	}
+
 	input := map[string]interface{}{
-		"conditionLevels": conditionValues,
+		"conditionLevels": conditionLevels,
 		"jiaIsuUUID":      jiaIsuUUID,
 		"endTime":         endTime,
 		"startTime":       startTime,
+		"limit":           limit,
+		"lvMax":           lvMax,
+		"lvMin":           lvMin,
 	}
 
 	var query string
 
+	// > ユーザはコンディションレベルが悪い（Info 以外）ISU について詳細な状況を確認し、その問題を改善します。
+	// とあるので、infoが来ることはないと考えて良いはず
 	if startTime.IsZero() {
-		if len(conditionValues) == 3 {
-			query = "SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = :jiaIsuUUID" +
-				"	AND `timestamp` < :endTime" +
-				"	ORDER BY `timestamp` DESC"
-		} else {
-			query = "SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = :jiaIsuUUID" +
-				"	AND `condition_level` IN (:conditionLevels)" +
-				"	AND `timestamp` < :endTime" +
-				"	ORDER BY `timestamp` DESC"
-		}
+		query = "SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = :jiaIsuUUID" +
+			"	AND `condition_level` <= :lvMax" +
+			"	AND `condition_level` >= :lvMin" +
+			"	AND `timestamp` < :endTime" +
+			"	ORDER BY `timestamp` DESC" +
+			"	LIMIT :limit"
 	} else {
-		if len(conditionValues) == 3 {
-			query =
-				"SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = :jiaIsuUUID" +
-					"	AND `timestamp` < :endTime" +
-					"	AND :startTime <= `timestamp`" +
-					"	ORDER BY `timestamp` DESC"
-		} else {
-			query =
-				"SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = :jiaIsuUUID" +
-					"	AND `condition_level` IN (:conditionLevels)" +
-					"	AND `timestamp` < :endTime" +
-					"	AND :startTime <= `timestamp`" +
-					"	ORDER BY `timestamp` DESC"
-		}
+		query = "SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = :jiaIsuUUID" +
+			"	AND `condition_level` <= :lvMax" +
+			"	AND `condition_level` >= :lvMin" +
+			"	AND `timestamp` < :endTime" +
+			"	AND :startTime <= `timestamp`" +
+			"	ORDER BY `timestamp` DESC" +
+			"	LIMIT :limit"
+		// query =
+		// 	"SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = :jiaIsuUUID" +
+		// 		"	AND `condition_level` IN (:conditionLevels)" +
+		// 		"	AND `timestamp` < :endTime" +
+		// 		"	AND :startTime <= `timestamp`" +
+		// 		"	ORDER BY `timestamp` DESC" +
+		// 		"	LIMIT :limit"
 	}
 	query, args, err := sqlx.Named(query, input)
 	if err != nil {
 		return nil, fmt.Errorf("db error: %v", err)
 	}
-	if len(conditionValues) != 3 {
-		query, args, err = sqlx.In(query, args...)
-		if err != nil {
-			return nil, fmt.Errorf("db error: %v", err)
-		}
-	}
+	// if len(conditionLevels) != 3 {
+	// 	query, args, err = sqlx.In(query, args...)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("db error: %v", err)
+	// 	}
+	// }
 	query = db.Rebind(query)
 	err = db.Select(&conditions, query, args...)
 	if err != nil {
