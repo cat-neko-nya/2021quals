@@ -277,7 +277,7 @@ func main() {
 
 func CacheControlMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		c.Response().Header().Set("Cache-Control", "public max-age=86400")
+		c.Response().Header().Set("Cache-Control", "public")
 		return next(c)
 	}
 }
