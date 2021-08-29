@@ -1169,6 +1169,7 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 				"SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = :jiaIsuUUID" +
 					"	AND `condition_level` IN (:conditionLevels)" +
 					"	AND `timestamp` < :endTime" +
+					"	AND :startTime <= `timestamp`" +
 					"	ORDER BY `timestamp` DESC" +
 					"	LIMIT :limit"
 		}
