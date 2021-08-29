@@ -819,7 +819,7 @@ func getIsuIcon(c echo.Context) error {
 	// 	c.Logger().Errorf("db error: %v", err)
 	// 	return c.NoContent(http.StatusInternalServerError)
 	// }
-	filename := "/icon/" + jiaIsuUUID
+	filename := "/image_redirect/" + jiaIsuUUID
 
 	// _, err = os.Stat(filename)
 	// if err == nil {
@@ -835,7 +835,7 @@ func getIsuIcon(c echo.Context) error {
 	// }
 
 	c.Response().Header().Set("X-Accel-Redirect", filename)
-	return c.NoContent(http.StatusOK)
+	// return c.NoContent(http.StatusOK)
 }
 
 // GET /api/isu/:jia_isu_uuid/graph
