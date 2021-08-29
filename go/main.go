@@ -1408,11 +1408,11 @@ func postIsuCondition(c echo.Context) error {
 }
 
 func insertIsuCondition() {
-	var ch <-chan PostIsuConditionRequestWithIsuUUID = postIsuConditionChannel
-	var req []PostIsuConditionRequestWithIsuUUID
-	var values []string
-	req = make([]PostIsuConditionRequestWithIsuUUID, 10000)
-	values = make([]string, 10000)
+	var (
+		ch      <-chan PostIsuConditionRequestWithIsuUUID = postIsuConditionChannel
+		req     []PostIsuConditionRequestWithIsuUUID      = make([]PostIsuConditionRequestWithIsuUUID, 0, 1000)
+		queries []string                                  = make([]string, 0, 1000)
+	)
 
 	ticker := time.NewTicker(500 * time.Millisecond)
 	for {
@@ -1420,7 +1420,7 @@ func insertIsuCondition() {
 		case cond := <-ch:
 			req = append(req, cond)
 		case <-ticker.C:
-			params := make([]interface{}, 10000)
+			params := make([]interface{}, 0, 10000)
 			for _, cond := range req {
 				timestamp := time.Unix(cond.Timestamp, 0)
 
@@ -1429,22 +1429,21 @@ func insertIsuCondition() {
 					return
 				}
 				params = append(params, cond.JIAIsuUUID, timestamp, cond.IsSitting, cond.Condition, condLevel, cond.Message)
-				values = append(values, "(?, ?, ?, ?, ?, ?)")
+				queries = append(queries, "(?, ?, ?, ?, ?, ?)")
 			}
 			_, err := db.Exec(
 				"INSERT INTO `isu_condition`"+
 					"	(`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `condition_level`, `message`)"+
-					"	VALUES "+strings.Join(values, ","),
+					"	VALUES "+strings.Join(queries, ","),
 				params...)
 			if err != nil {
 				_ = fmt.Errorf("db error: %v", err)
 				return
 			}
-			req = make([]PostIsuConditionRequestWithIsuUUID, 10000)
-			values = make([]string, 10000)
+			req = make([]PostIsuConditionRequestWithIsuUUID, 0, 1000)
+			queries = make([]string, 0, 1000)
 		}
 	}
-
 }
 
 // ISUのコンディションの文字列がcsv形式になっているか検証
